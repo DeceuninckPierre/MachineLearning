@@ -243,7 +243,22 @@ trainClean &lt;- train[,colSums(is.na(train)) == 0] </code></pre>
 <li>yaw</li>
 </ul>
 <pre class="r"><code># Selecting most relevant variables
-subTrainClean &lt;- trainClean[,c(8:10,21:23,34:36,47:49,60)]</code></pre>
+subTrainClean &lt;- trainClean[,c(8:10,21:23,34:36,47:49,60)]
+str(subTrainClean)</code></pre>
+<pre><code>## 'data.frame':    19622 obs. of  13 variables:
+##  $ roll_belt     : num  1.41 1.41 1.42 1.48 1.48 1.45 1.42 1.42 1.43 1.45 ...
+##  $ pitch_belt    : num  8.07 8.07 8.07 8.05 8.07 8.06 8.09 8.13 8.16 8.17 ...
+##  $ yaw_belt      : num  -94.4 -94.4 -94.4 -94.4 -94.4 -94.4 -94.4 -94.4 -94.4 -94.4 ...
+##  $ roll_arm      : num  -128 -128 -128 -128 -128 -128 -128 -128 -128 -128 ...
+##  $ pitch_arm     : num  22.5 22.5 22.5 22.1 22.1 22 21.9 21.8 21.7 21.6 ...
+##  $ yaw_arm       : num  -161 -161 -161 -161 -161 -161 -161 -161 -161 -161 ...
+##  $ roll_dumbbell : num  13.1 13.1 12.9 13.4 13.4 ...
+##  $ pitch_dumbbell: num  -70.5 -70.6 -70.3 -70.4 -70.4 ...
+##  $ yaw_dumbbell  : num  -84.9 -84.7 -85.1 -84.9 -84.9 ...
+##  $ roll_forearm  : num  28.4 28.3 28.3 28.1 28 27.9 27.9 27.8 27.7 27.7 ...
+##  $ pitch_forearm : num  -63.9 -63.9 -63.9 -63.9 -63.9 -63.9 -63.9 -63.8 -63.8 -63.8 ...
+##  $ yaw_forearm   : num  -153 -153 -152 -152 -152 -152 -152 -152 -152 -152 ...
+##  $ classe        : Factor w/ 5 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
 <p>This leaves us with 19622 observations of 13 variables (12 predictors and 1 outcome).</p>
 </div>
 </div>
@@ -272,35 +287,66 @@ trainingStd &lt;- predict(preObj,training[,-13])
 # perforiming principal component analysis on training data
 preProc &lt;- preProcess(trainingStd[, -13], method = &quot;pca&quot;, thresh = 0.95)
 trainPC &lt;- predict(preProc,trainingStd)
-trainPC &lt;- data.frame(trainPC, training$classe)</code></pre>
+trainPC &lt;- data.frame(trainPC, training$classe)
+
+preProc</code></pre>
+<pre><code>## Created from 14718 samples and 12 variables
+## 
+## Pre-processing:
+##   - centered (12)
+##   - ignored (0)
+##   - principal component signal extraction (12)
+##   - scaled (12)
+## 
+## PCA needed 9 components to capture 95 percent of the variance</code></pre>
 </div>
 <div id="fitting-the-model" class="section level4">
 <h4>Fitting the model</h4>
 <p>The model we decided to use for our prediction is random forest as it gives the best accuracy and we have confidence that thanks to our predictor selection the model would not be overfitted.</p>
-<pre class="r"><code># normalising training data
-preObj &lt;- preProcess(training[,-13],method=c(&quot;center&quot;,&quot;scale&quot;))
-trainingStd &lt;- predict(preObj,training[,-13])
-
-# perforiming principal component analysis on training data
-preProc &lt;- preProcess(trainingStd[, -13], method = &quot;pca&quot;, thresh = 0.95)
-trainPC &lt;- predict(preProc,trainingStd)
-trainPC &lt;- data.frame(trainPC, training$classe)</code></pre>
+<pre class="r"><code># creating models using training data
+modFit1 &lt;- train(training.classe ~ .,data = trainPC, method=&quot;rf&quot;,prox=TRUE)
+modFit1</code></pre>
+<pre><code>## Random Forest 
+## 
+## 14718 samples
+##     9 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Bootstrapped (25 reps) 
+## Summary of sample sizes: 14718, 14718, 14718, 14718, 14718, 14718, ... 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##   2     0.9229728  0.9025717
+##   5     0.9189795  0.8975204
+##   9     0.9104551  0.8867459
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 2.</code></pre>
 <p>The model gives us an accuracy of 92% which should be sufficient to pass the final quiz!</p>
 </div>
 </div>
 <div id="model-evaluation" class="section level3">
 <h3>Model evaluation</h3>
-<p>In order to validate the model, we apply it to the validation set we created after normalising the data and applying pca using training information</p>
+<p>In order to validate the model, we apply it to the validation set we created after normalising the data and applying pca using training information.</p>
 <pre class="r"><code># normalising and applying pca to validating data set (using training values)
 validatingStd &lt;- predict(preObj,validating[,-13])
 validPC &lt;- predict(preProc,validatingStd)
 
 # predicting results using the two methods
-pred1 &lt;- predict(modFit1,validPC)
-
-# checking prediction outcome 
+pred1 &lt;- predict(modFit1,validPC)</code></pre>
+<p>This gives the following out of sample error.</p>
+<pre class="r"><code># checking prediction outcome 
 validating$predRight &lt;- pred1==validating$classe
-table(Pred,validating$classe)</code></pre>
+table(pred1,validating$classe)</code></pre>
+<pre><code>##      
+## pred1    A    B    C    D    E
+##     A 1345   34   11    0    5
+##     B   26  858   21   10   12
+##     C   17   33  796   30   18
+##     D    4   14   23  760   15
+##     E    3   10    4    4  851</code></pre>
 </div>
 </div>
 <div id="final-results" class="section level2">
@@ -317,6 +363,8 @@ FinalPred &lt;- predict(modFit1,testPC)
 
 # predictions
 FinalPred</code></pre>
+<pre><code>##  [1] B A B A A E C B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
 <p>The prediction gives us 19 correct answers out of 20 to the quiz which is in line with our 92% Accuracy</p>
 </div>
 </div>

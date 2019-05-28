@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
-                      eval=FALSE)
+                      eval=TRUE)
 library(caret)
 ```
 
@@ -71,6 +71,7 @@ Comparing the value of the information carried out by each variable we decided t
 ```{r SelectingVars, message=FALSE}
 # Selecting most relevant variables
 subTrainClean <- trainClean[,c(8:10,21:23,34:36,47:49,60)]
+str(subTrainClean)
 ```
 
 This leaves us with 19622 observations of 13 variables (12 predictors and 1 outcome).
@@ -112,28 +113,31 @@ trainingStd <- predict(preObj,training[,-13])
 preProc <- preProcess(trainingStd[, -13], method = "pca", thresh = 0.95)
 trainPC <- predict(preProc,trainingStd)
 trainPC <- data.frame(trainPC, training$classe)
+
+preProc
 ```
 
 #### Fitting the model
 
 The model we decided to use for our prediction is random forest as it gives the best accuracy and we have confidence that thanks to our predictor selection the model would not be overfitted.
 
-```{r ModelFit, message=FALSE}
-# normalising training data
-preObj <- preProcess(training[,-13],method=c("center","scale"))
-trainingStd <- predict(preObj,training[,-13])
+```{r ModelFit, eval=FALSE}
+# creating models using training data
+modFit1 <- train(training.classe ~ .,data = trainPC, method="rf",prox=TRUE)
+modFit1
+```
 
-# perforiming principal component analysis on training data
-preProc <- preProcess(trainingStd[, -13], method = "pca", thresh = 0.95)
-trainPC <- predict(preProc,trainingStd)
-trainPC <- data.frame(trainPC, training$classe)
+```{r ModelFitLoad, eval=TRUE, echo=FALSE}
+# creating models using training data
+modFit1 <- readRDS("./modFit1.rds")
+modFit1
 ```
 
 The model gives us an accuracy of 92% which should be sufficient to pass the final quiz!
 
 ### Model evaluation
 
-In order to validate the model, we apply it to the validation set we created after normalising the data and applying pca using training information
+In order to validate the model, we apply it to the validation set we created after normalising the data and applying pca using training information.
 
 ```{r ModelEval, message=FALSE}
 # normalising and applying pca to validating data set (using training values)
@@ -142,10 +146,14 @@ validPC <- predict(preProc,validatingStd)
 
 # predicting results using the two methods
 pred1 <- predict(modFit1,validPC)
+```
 
+This gives the following out of sample error.
+
+```{r ModelEval2, message=FALSE}
 # checking prediction outcome 
 validating$predRight <- pred1==validating$classe
-table(Pred,validating$classe)
+table(pred1,validating$classe)
 ```
 
 ## Final results
