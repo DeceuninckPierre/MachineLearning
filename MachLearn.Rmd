@@ -1,0 +1,177 @@
+---
+title: "Machine Learning Assigment"
+author: "Pierre Deceuninck"
+date: "May 27, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval=FALSE)
+library(caret)
+```
+
+# Assignment objective
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Executive summary
+
+Our aim in this assignement was to predict the manner in which participant of the test set did the exercise. 
+
+Following the content of the class, we applied the following approach for building the prediction model:
+
+* Cross-validation 
+* Predictors selection
+* Training
+* Model evaluation
+* Predictions
+
+The outcome of our prediction model is 19 out of 20.
+
+## Assignement execution
+
+### Data Loading and cleanining (for cross validation purposes)
+
+Data were downloaded from the link provided: 
+
+* The training data: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+* The test data: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+And then loaded, paying attention, to headers, empty values (converted to NA), etc.
+
+```{r Loading, message=FALSE}
+# loading training and testing data
+train <- read.csv2("pml-training.csv", header = TRUE, sep = ",", quote = "\"", dec = ".", fill = TRUE, comment.char = "",na.strings = c("NA",""))
+test <- read.csv2("pml-testing.csv", header = TRUE, sep = ",", quote = "\"", dec = ".", fill = TRUE, comment.char = "",na.strings = c("NA",""))
+```
+
+#### Train Data Cleaning
+
+Once loaded, the train data is composed of 19622 observations of 160 variables. Investigating the data, we realised that an important part of the varibales contains NA elements that need to be either replaced or imputed to be used in a prediction model. 
+
+For this prupose, we decided first to remove all variables containing at least an NA value. This restricted the data set to 19622 observations of  60 variables.
+
+```{r RemovingNAs, message=FALSE}
+# Cleaning the training dataset by removing columns with NA and keeping only global acceleration parameters
+trainClean <- train[,colSums(is.na(train)) == 0] 
+```
+
+#### Train Data Selection
+
+Last after investigating the data in more details, we noticed that the remaining data contained sensor numeric information coming from the 4 belts.
+Comparing the value of the information carried out by each variable we decided to keep only three for each belt covering:
+
+* roll
+* pitch
+* yaw
+
+```{r SelectingVars, message=FALSE}
+# Selecting most relevant variables
+subTrainClean <- trainClean[,c(8:10,21:23,34:36,47:49,60)]
+```
+
+This leaves us with 19622 observations of 13 variables (12 predictors and 1 outcome).
+
+
+
+### Model building
+
+#### Cross-Validation
+
+In order to validate the models we aim at building we decided to create a validation set by extracting randomly 25% of the training data.
+
+```{r CrossValidation, message=FALSE}
+# setting seeds for reproducibility
+set.seed(2019-05-24)
+
+# spliting trianing data in trining and validating sets
+inTrain <- createDataPartition(y=subTrainClean$classe,p=0.75, list=FALSE)
+training <- subTrainClean[inTrain,]
+validating <- subTrainClean[-inTrain,]
+```
+
+The traing set is now composed of 14718 observations of 13 variables
+
+#### Pre-processing
+
+Based on the selected predictors we decided to prepare the data in order to best feed the models and then to select to best model we could build.
+
+As all data are numeric, we decided to normalise all predictors in order to keep only the variability and nor introduce bias due to the predictord values.
+The second pre processing step was to apply the principal component analysis in order to reduce further the number of predictors to reduce the calculation time required to build the models.
+Aiming at covering 95% of the variability, we kept only 9 prdictors.
+
+```{r PreProcessing, message=FALSE}
+# normalising training data
+preObj <- preProcess(training[,-13],method=c("center","scale"))
+trainingStd <- predict(preObj,training[,-13])
+
+# perforiming principal component analysis on training data
+preProc <- preProcess(trainingStd[, -13], method = "pca", thresh = 0.95)
+trainPC <- predict(preProc,trainingStd)
+trainPC <- data.frame(trainPC, training$classe)
+```
+
+#### Fitting the model
+
+The model we decided to use for our prediction is random forest as it gives the best accuracy and we have confidence that thanks to our predictor selection the model would not be overfitted.
+
+```{r ModelFit, message=FALSE}
+# normalising training data
+preObj <- preProcess(training[,-13],method=c("center","scale"))
+trainingStd <- predict(preObj,training[,-13])
+
+# perforiming principal component analysis on training data
+preProc <- preProcess(trainingStd[, -13], method = "pca", thresh = 0.95)
+trainPC <- predict(preProc,trainingStd)
+trainPC <- data.frame(trainPC, training$classe)
+```
+
+The model gives us an accuracy of 92% which should be sufficient to pass the final quiz!
+
+### Model evaluation
+
+In order to validate the model, we apply it to the validation set we created after normalising the data and applying pca using training information
+
+```{r ModelEval, message=FALSE}
+# normalising and applying pca to validating data set (using training values)
+validatingStd <- predict(preObj,validating[,-13])
+validPC <- predict(preProc,validatingStd)
+
+# predicting results using the two methods
+pred1 <- predict(modFit1,validPC)
+
+# checking prediction outcome 
+validating$predRight <- pred1==validating$classe
+table(Pred,validating$classe)
+```
+
+## Final results
+
+To obtain the final results, we apply the pre-processing to the test data and predict using our fitted model.
+
+```{r FinalPred, message=FALSE}
+# Cleaning test data set
+testClean <- test[,colSums(is.na(test)) == 0]
+subTestClean <- testClean[,c(8:10,21:23,34:36,47:49)]
+
+# applying combined model to test data
+testingStd <- predict(preObj,testClean)
+testPC <- predict(preProc,testingStd)
+FinalPred <- predict(modFit1,testPC)
+
+# predictions
+FinalPred
+```
+
+The prediction gives us 19 correct answers out of 20 to the quiz which is in line with our 92% Accuracy
+
+# Conclusions
+
+We successfully apply the knowledge gained during the class. Due to time constraints, we tried to aim a getting a "good enough" model as quickly as possible.
+
+Other models could have been built and tuned properly in order to increase the accuracy. For example, we also used "Boosting" method that we started to tune but had to stop by lack of time. Combining it with random forest method could probably allow improving the accuracy.
+
+On another hand, principle component analysis may also limit our accuracy. But it allowed us to complete the assignment on time.
