@@ -339,14 +339,39 @@ pred1 &lt;- predict(modFit1,validPC)</code></pre>
 <p>This gives the following out of sample error.</p>
 <pre class="r"><code># checking prediction outcome 
 validating$predRight &lt;- pred1==validating$classe
-table(pred1,validating$classe)</code></pre>
-<pre><code>##      
-## pred1    A    B    C    D    E
-##     A 1345   34   11    0    5
-##     B   26  858   21   10   12
-##     C   17   33  796   30   18
-##     D    4   14   23  760   15
-##     E    3   10    4    4  851</code></pre>
+confusionMatrix(pred1, validating$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1345   34   11    0    5
+##          B   26  858   21   10   12
+##          C   17   33  796   30   18
+##          D    4   14   23  760   15
+##          E    3   10    4    4  851
+## 
+## Overall Statistics
+##                                          
+##                Accuracy : 0.94           
+##                  95% CI : (0.933, 0.9465)
+##     No Information Rate : 0.2845         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.9242         
+##                                          
+##  Mcnemar's Test P-Value : 0.003045       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9642   0.9041   0.9310   0.9453   0.9445
+## Specificity            0.9858   0.9826   0.9758   0.9863   0.9948
+## Pos Pred Value         0.9642   0.9256   0.8904   0.9314   0.9759
+## Neg Pred Value         0.9858   0.9771   0.9853   0.9892   0.9876
+## Prevalence             0.2845   0.1935   0.1743   0.1639   0.1837
+## Detection Rate         0.2743   0.1750   0.1623   0.1550   0.1735
+## Detection Prevalence   0.2845   0.1890   0.1823   0.1664   0.1778
+## Balanced Accuracy      0.9750   0.9433   0.9534   0.9658   0.9696</code></pre>
 </div>
 </div>
 <div id="final-results" class="section level2">
